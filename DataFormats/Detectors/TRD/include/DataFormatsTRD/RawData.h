@@ -218,6 +218,135 @@ struct TRDFeeID {
   };
 };
 
+struct DigitHCHeader{
+  union {
+    uint32_t hc0;  //HC header0
+    struct {
+        uint32_t hcRes0 : 2;          //reserve 01
+        uint32_t chamberSide : 1;   //Side on chamber (0:A , 1:B)
+        uint32_t chamberNo : 3;     //Chamber Number (same as stack)
+        uint32_t planeNo : 3;       //Plane Number (same as layer)
+        uint32_t superMod : 5;      //Super-module Sector Number (ALICE numbering)
+        uint32_t addHCW: 3;         //Number of additional HC-header words
+        uint32_t minor : 7;         //Raw Version Minor Number
+        uint32_t major : 7;         // Raw Version Major Number
+        uint32_t version : 1;     //Raw Version Special Number
+    };
+  };
+
+  union {
+    uint32_t hc1;  //HC header1
+    struct {
+        uint32_t hcRes1 : 2;         //reserve 01
+        uint32_t pretrigCount : 4;   //Pretrigger counter
+        uint32_t pretrigPhase : 4;   //Pretrigger phase
+        uint32_t bcCount : 16;       //Bunch crossing counter
+        uint32_t timeBinNo : 6;      //Number of time-bins
+    };
+  };
+  union {
+    uint32_t hc2;  //HC header2
+    struct {
+        uint32_t hcRes2 : 6;            //reserve 11 0001
+        uint32_t digiFilter : 6;        //Digitallter common additive
+        uint32_t rawFilter : 1;         //Raw data bypasslter (0:no 1:yes)
+        uint32_t nonLinFilter : 1;      //Non-lin Filter setup (0:o 1:on)
+        uint32_t crossTalkFilter : 1;   //Crosstalk Filter setup (0:o 1:on)
+        uint32_t tailFilter : 1;        //Tail Filter setup (0:o 1:on)
+        uint32_t gainilter : 1;         //Gain Filter setup (0:o 1:on)
+        uint32_t pedFilter : 6;         //Pedestal Filter setup (0:o 1:on)
+    };
+  };
+  union {
+    uint32_t hc3;  //HC header3
+    struct {
+        uint32_t hcRes3 : 6;            //reserve 11 0101
+        uint32_t svnFitNReadout : 13;   //SVN Revision of thet and readout program
+        uint32_t svnAssembler : 13;     //RSVN Revision of the assembler used for compilation
+    };
+  };
+};
+
+struct DigitMCMHeader{
+  union {
+    uint32_t mcm;  //MCM header
+    struct {
+        uint32_t mcmres : 4;          // reserve 1100
+        uint32_t eventCount : 20;     //Event counter from 1
+        uint32_t mcmPos : 4;          //MCM position (ALICE numbering)
+        uint32_t readoutBPos : 3;     //Readout board position (ALICE numbering)
+        uint32_t year: 1;             //0 before, 1 since 10.2007
+    };
+  };
+};
+
+struct trdTestPattern2{
+  union {
+    uint32_t tp2;  //HC header0
+    struct {
+        uint32_t eventCountTp2 : 6;   //event counter
+        uint32_t supMOdTp2: 5;     //Chamber Number (same as stack)
+        uint32_t planeNoTp2 : 3;       //Plane Number (same as layer)
+        uint32_t chamberNumTp2 : 3;    //Chamber Number
+        uint32_t rob: 3;              //rob
+        uint32_t mcmTp2 : 4;           //mcm
+        uint32_t cpu : 2;             // cpu
+        uint32_t counter : 6;         //counter++
+    };
+  };
+  union {
+    uint32_t tp3;  //HC header0
+    struct {
+        uint32_t eventCountTp3 : 12;   //event counter
+        uint32_t supMOdT3: 5;     //Chamber Number (same as stack)
+        uint32_t planeNoTp3 : 3;       //Plane Number (same as layer)
+        uint32_t chamberNumTp3 : 3;    //Chamber Number
+        uint32_t robTp3: 3;              //rob
+        uint32_t mcmTp3 : 4;           //mcm
+        uint32_t cpuTp3 : 2;             // cpu
+      };
+    };
+    union {
+      uint32_t tp6;  //HC header0
+      struct {
+          uint32_t eventCountTp6 : 4;   //event counter
+          uint32_t supMOdTp6: 5;     //Chamber Number (same as stack)
+          uint32_t planeNoTp6 : 3;       //Plane Number (same as layer)
+          uint32_t chamberNumTp6 : 3;    //Chamber Number
+          uint32_t robTp6: 3;              //rob
+          uint32_t mcmTp6 : 4;           //mcm
+          uint32_t cpuTp6 : 2;             // cpu
+          uint32_t counterTp6 : 6;         //counter++
+          uint32_t oddAdcTp6 : 2;         //odd adc channels
+
+      };
+    };
+  };
+
+  struct DigitADC
+  {
+    union
+    {
+      uint32_t adc;         //adcmask
+      struct{
+        uint32_t n : 2;   //unused
+        uint32_t c: 5;     //unused
+        uint32_t selectedAdc : 21;       //Plane Number (same as layer)
+      };
+    };
+    union
+    {
+      uint32_t raw;
+      struct{
+        uint32_t f : 2;
+        uint32_t z : 10;
+        uint32_t y : 10;
+        uint32_t x : 10;
+        };
+      };
+    };
+
+
 void buildTrackletHCHeader(TrackletHCHeader& header, int sector, int stack, int layer, int side, int chipclock, int format);
 void buildTrackletHCHeaderd(TrackletHCHeader& header, int detector, int rob, int chipclock, int format);
 uint16_t buildTRDFeeID(int supermodule, int side, int endpoint);
@@ -229,10 +358,13 @@ uint32_t getlinkdatasize(const HalfCRUHeader& cruhead, const uint32_t link);
 uint32_t getlinkerrorflags(const HalfCRUHeader& cruheader, std::array<uint32_t, 15>& linkerrorflags);
 uint32_t getlinkdatasizes(const HalfCRUHeader& cruheader, std::array<uint32_t, 15>& linksizes);
 std::ostream& operator<<(std::ostream& stream, const TrackletHCHeader halfchamberheader);
+std::ostream& operator<<(std::ostream& stream, DigitHCHeader halfchamberheader);
 std::ostream& operator<<(std::ostream& stream, const TrackletMCMData& tracklet);
+std::ostream& operator<<(std::ostream& stream, DigitMCMData& digit);
 void printTrackletMCMData(o2::trd::TrackletMCMData& tracklet);
 void printTrackletMCMHeader(o2::trd::TrackletMCMHeader& mcmhead);
 std::ostream& operator<<(std::ostream& stream, const TrackletMCMHeader& mcmhead);
+std::ostream& operator<<(std::ostream& stream, DigitMCMHeader& mcmhead);
 void printHalfChamber(o2::trd::TrackletHCHeader& halfchamber);
 void dumpHalfChamber(o2::trd::TrackletHCHeader& halfchamber);
 void printHalfCRUHeader(o2::trd::HalfCRUHeader& halfcru);

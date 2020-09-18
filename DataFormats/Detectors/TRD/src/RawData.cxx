@@ -120,6 +120,15 @@ std::ostream& operator<<(std::ostream& stream, const TrackletHCHeader halfchambe
          << halfchamberheader.side << std::endl;
   return stream;
 }
+std::ostream& operator<<(std::ostream& stream, DigitHCHeader halfchamberheader)
+{
+  stream << "DigitHCHeader : Raw:0x" << std::hex << halfchamberheader.hc0 << " "
+         << halfchamberheader. << " ;; " << halfchamberheader.major << " :: "
+         << halfchamberheader.addHCW << " :: (" << halfchamberheader.superMod << ","
+         << halfchamberheader.chamberNo << "," << halfchamberheader.planeNo << ") on side :"
+         << halfchamberheader.chamberSide << std::endl;
+  return stream;
+}
 
 std::ostream& operator<<(std::ostream& stream, const TrackletMCMData& tracklet)
 {
@@ -127,6 +136,13 @@ std::ostream& operator<<(std::ostream& stream, const TrackletMCMData& tracklet)
   stream << "TrackletMCMData: Raw:0x" << std::hex << tracklet.word << " pos=" << tracklet.pos
          << "::slope=" << tracklet.slope << "::pid=" << tracklet.pid << "::checkbit="
          << tracklet.checkbit << std::endl;
+  return stream;
+}
+std::ostream& operator<<(std::ostream& stream, DigitMCMHeader& mcmhead)
+{
+  // make a pretty output of the tracklet.
+  stream << "DigitMCMHeader: Raw:0x" << std::hex << mcmhead.mcm << " pos=" << mcmhead.mcmPos
+         << ":: Even Counter=" << mcmhead.eventCount << std::endl;
   return stream;
 }
 void printTrackletMCMData(o2::trd::TrackletMCMData const& tracklet)
@@ -142,7 +158,14 @@ void printTrackletMCMHeader(o2::trd::TrackletMCMHeader const& mcmhead)
        mcmhead.pid2, mcmhead.pid1, mcmhead.pid0, mcmhead.oneb);
 }
 
-std::ostream& operator<<(std::ostream& stream, const TrackletMCMHeader& mcmhead)
+std::ostream& operator<<(std::ostream& stream, DigitMCMData& mcmhead)
+{
+  // make a pretty output of the mcm header.
+  stream << "MCMRawData: Raw:0x" << std::hex << mcmhead.adc << " " << mcmhead.selectedAdc
+         << std::endl;
+  return stream;
+}
+std::ostream& operator<<(std::ostream& stream, DigitMCMHeader& mcmhead)
 {
   // make a pretty output of the mcm header.
   stream << "MCMRawHeader: Raw:0x" << std::hex << mcmhead.word << " " << mcmhead.onea << "::"
@@ -188,10 +211,10 @@ void dumpHalfCRUHeader(o2::trd::HalfCRUHeader& halfcru)
 std::ostream& operator<<(std::ostream& stream, const HalfCRUHeader& halfcru)
 { // make a pretty output of the header.
   stream << std::hex;
-  stream << "EventType : " << halfcru.EventType << std::endl;
-  stream << "StopBit : " << halfcru.StopBit << std::endl;
-  stream << "BunchCrossing : " << halfcru.BunchCrossing << std::endl;
-  stream << "HeaderVersion : " << halfcru.HeaderVersion << std::endl;
+  stream << "EventType : StopBit " << halfcru.EventType
+         << halfcru.StopBit
+         << "BunchCrossing : HeaderVersion  " << halfcru.BunchCrossing
+         << " : " << halfcru.HeaderVersion << std::endl;
   stream << "link  sizes : ";
   for (int link = 0; link < 15; link++)
     stream << link << ":" << std::hex << std::setw(4) << getlinkdatasize(halfcru, link) << ",";
