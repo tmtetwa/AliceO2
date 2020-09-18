@@ -123,7 +123,7 @@ std::ostream& operator<<(std::ostream& stream, const TrackletHCHeader halfchambe
 std::ostream& operator<<(std::ostream& stream, DigitHCHeader halfchamberheader)
 {
   stream << "DigitHCHeader : Raw:0x" << std::hex << halfchamberheader.hc0 << " "
-         << halfchamberheader. << " ;; " << halfchamberheader.major << " :: "
+         << halfchamberheader.major << " :: "
          << halfchamberheader.addHCW << " :: (" << halfchamberheader.superMod << ","
          << halfchamberheader.chamberNo << "," << halfchamberheader.planeNo << ") on side :"
          << halfchamberheader.chamberSide << std::endl;
@@ -165,7 +165,7 @@ std::ostream& operator<<(std::ostream& stream, DigitMCMData& mcmhead)
          << std::endl;
   return stream;
 }
-std::ostream& operator<<(std::ostream& stream, DigitMCMHeader& mcmhead)
+std::ostream& operator<<(std::ostream& stream, TrackletMCMHeader& mcmhead)
 {
   // make a pretty output of the mcm header.
   stream << "MCMRawHeader: Raw:0x" << std::hex << mcmhead.word << " " << mcmhead.onea << "::"

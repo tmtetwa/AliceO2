@@ -323,7 +323,7 @@ struct trdTestPattern2{
     };
   };
 
-  struct DigitADC
+  struct DigitMCMData
   {
     union
     {
