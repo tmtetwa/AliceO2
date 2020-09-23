@@ -8,7 +8,6 @@
 // granted to it by virtue of its status as an Intergovernmental Organization
 // or submit itself to any jurisdiction.
 #include "Framework/AnalysisDataModel.h"
-#include "Analysis/SecondaryVertex.h"
 #include "Analysis/SecondaryVertexHF.h"
 #include "PID/PIDResponse.h"
 #include "Analysis/Multiplicity.h"
@@ -144,19 +143,19 @@ edge[dir=back, arrowtail=empty]
   (dumpIndex<Ts>(typename Ts::iterator::external_index_columns_t{}), ...);
 }
 
-int main(int argc, char** argv)
+int main(int, char**)
 {
   fmt::printf("%s", R"(digraph hierarchy {
 size="5,5"
 node[shape=plain,style=filled,fillcolor=gray95]
 edge[dir=back, arrowtail=empty]
 )");
-  dumpCluster<Tracks, TracksCov, TracksExtra, TracksExtended, TrackSelection>();
+  /// FIXME: topology should account for predefined Joins
+  dumpCluster<StoredTracks, TracksExtension, StoredTracksCov, TracksCovExtension, TracksExtra, TracksExtended, TrackSelection>();
   dumpTable<Collisions>();
   dumpTable<Calos>();
   dumpTable<CaloTriggers>();
-  dumpTable<Muons>();
-  dumpTable<StoredMuons>();
+  dumpCluster<StoredMuons, MuonsExtension>();
   dumpTable<MuonClusters>();
   dumpTable<Zdcs>();
   dumpTable<Run2V0s>();
@@ -167,8 +166,6 @@ edge[dir=back, arrowtail=empty]
   dumpTable<FV0s>();
   dumpTable<FDDs>();
   dumpTable<Timestamps>();
-  dumpTable<SecVtx2Prong>(true, StyleType::GREEN);
-  dumpTable<Cand2Prong>(true, StyleType::GREEN);
   dumpTable<HfTrackIndexProng2>(true, StyleType::GREEN);
   dumpTable<HfTrackIndexProng3>(true, StyleType::GREEN);
 

@@ -18,6 +18,7 @@
 #include "ReconstructionDataFormats/TrackTPCITS.h"
 #include "SimulationDataFormat/MCCompLabel.h"
 #include "SimulationDataFormat/MCTruthContainer.h"
+#include "SimulationDataFormat/DigitizationContext.h"
 #include "DataFormatsITS/TrackITS.h"
 #include "DataFormatsITSMFT/Cluster.h"
 #include "DataFormatsITSMFT/CompCluster.h"
@@ -34,12 +35,14 @@
 #include "DetectorsCommonDataFormats/NameConf.h"
 #include "DataFormatsParameters/GRPObject.h"
 #include "Headers/DataHeader.h"
+#include "CommonDataFormat/BunchFilling.h"
 
 // RSTODO to remove once the framework will start propagating the header.firstTForbit
 #include "DetectorsRaw/HBFUtils.h"
 
 using namespace o2::framework;
-using MCLabelContainer = o2::dataformats::MCTruthContainer<o2::MCCompLabel>;
+using MCLabelsCl = o2::dataformats::MCTruthContainer<o2::MCCompLabel>;
+using MCLabelsTr = gsl::span<const o2::MCCompLabel>;
 
 namespace o2
 {
@@ -83,6 +86,12 @@ void TPCITSMatchingDPL::init(InitContext& ic)
   } else {
     LOG(INFO) << "Material LUT " << matLUTFile << " file is absent, only TGeo can be used";
   }
+
+  // set bunch filling. Eventually, this should come from CCDB
+  const auto* digctx = o2::steer::DigitizationContext::loadFromFile("collisioncontext.root");
+  const auto& bcfill = digctx->getBunchFilling();
+  mMatching.setBunchFilling(bcfill);
+
   mMatching.init();
   //
 }
@@ -197,24 +206,18 @@ void TPCITSMatchingDPL::run(ProcessingContext& pc)
   //----------------------------<< TPC Clusters loading <<------------------------------------------
 
   //
-  const o2::dataformats::MCTruthContainer<o2::MCCompLabel>* lblITSPtr = nullptr;
-  std::unique_ptr<const o2::dataformats::MCTruthContainer<o2::MCCompLabel>> lblITS;
+  MCLabelsTr lblITS;
+  MCLabelsTr lblTPC;
 
-  const o2::dataformats::MCTruthContainer<o2::MCCompLabel>* lblClusITSPtr = nullptr;
-  std::unique_ptr<const o2::dataformats::MCTruthContainer<o2::MCCompLabel>> lblClusITS;
-
-  const o2::dataformats::MCTruthContainer<o2::MCCompLabel>* lblTPCPtr = nullptr;
-  std::unique_ptr<const o2::dataformats::MCTruthContainer<o2::MCCompLabel>> lblTPC;
+  const MCLabelsCl* lblClusITSPtr = nullptr;
+  std::unique_ptr<const MCLabelsCl> lblClusITS;
 
   if (mUseMC) {
-    lblITS = pc.inputs().get<const o2::dataformats::MCTruthContainer<o2::MCCompLabel>*>("trackITSMCTR");
-    lblITSPtr = lblITS.get();
+    lblITS = pc.inputs().get<gsl::span<o2::MCCompLabel>>("trackITSMCTR");
+    lblTPC = pc.inputs().get<gsl::span<o2::MCCompLabel>>("trackTPCMCTR");
 
     lblClusITS = pc.inputs().get<const o2::dataformats::MCTruthContainer<o2::MCCompLabel>*>("clusITSMCTR");
     lblClusITSPtr = lblClusITS.get();
-
-    lblTPC = pc.inputs().get<const o2::dataformats::MCTruthContainer<o2::MCCompLabel>*>("trackTPCMCTR");
-    lblTPCPtr = lblTPC.get();
   }
   //
   // create ITS clusters as spacepoints in tracking frame
@@ -234,9 +237,9 @@ void TPCITSMatchingDPL::run(ProcessingContext& pc)
   mMatching.setTPCClustersInp(&clusterIndex);
 
   if (mUseMC) {
-    mMatching.setITSTrkLabelsInp(lblITSPtr);
+    mMatching.setITSTrkLabelsInp(lblITS);
+    mMatching.setTPCTrkLabelsInp(lblTPC);
     mMatching.setITSClsLabelsInp(lblClusITSPtr);
-    mMatching.setTPCTrkLabelsInp(lblTPCPtr);
   }
 
   if (mUseFT0) {

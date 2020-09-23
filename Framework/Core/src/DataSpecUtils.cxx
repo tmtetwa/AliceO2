@@ -11,6 +11,7 @@
 #include "Framework/DataDescriptorMatcher.h"
 #include "Framework/DataMatcherWalker.h"
 #include "Framework/VariantHelpers.h"
+#include "Framework/Logger.h"
 #include <cstring>
 #include <cinttypes>
 
@@ -262,6 +263,18 @@ bool DataSpecUtils::partialMatch(OutputSpec const& output, header::DataOrigin co
 bool DataSpecUtils::partialMatch(InputSpec const& input, header::DataOrigin const& origin)
 {
   return DataSpecUtils::asConcreteOrigin(input) == origin;
+}
+
+bool DataSpecUtils::partialMatch(InputSpec const& input, header::DataDescription const& description)
+{
+  auto dataType = DataSpecUtils::asConcreteDataTypeMatcher(input);
+  return dataType.description == description;
+}
+
+bool DataSpecUtils::partialMatch(OutputSpec const& output, header::DataDescription const& description)
+{
+  auto dataType = DataSpecUtils::asConcreteDataTypeMatcher(output);
+  return dataType.description == description;
 }
 
 ConcreteDataMatcher DataSpecUtils::asConcreteDataMatcher(InputSpec const& spec)

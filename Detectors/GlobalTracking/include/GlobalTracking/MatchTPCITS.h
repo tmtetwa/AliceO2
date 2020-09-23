@@ -34,6 +34,7 @@
 #include "CommonDataFormat/EvIndex.h"
 #include "CommonDataFormat/InteractionRecord.h"
 #include "CommonDataFormat/RangeReference.h"
+#include "CommonDataFormat/BunchFilling.h"
 #include "SimulationDataFormat/MCCompLabel.h"
 #include "CommonUtils/TreeStreamRedirector.h"
 #include "DataFormatsITSMFT/Cluster.h"
@@ -267,15 +268,18 @@ struct ITSChipClustersRefs {
 
 class MatchTPCITS
 {
+ public:
   using ITSCluster = o2::BaseCluster<float>;
   using ClusRange = o2::dataformats::RangeReference<int, int>;
-  using MCLabCont = o2::dataformats::MCTruthContainer<o2::MCCompLabel>;
+  using MCLabContCl = o2::dataformats::MCTruthContainer<o2::MCCompLabel>;
+  using MCLabContTr = std::vector<o2::MCCompLabel>;
+  using MCLabSpan = gsl::span<const o2::MCCompLabel>;
   using TPCTransform = o2::gpu::TPCFastTransform;
   using BracketF = o2::utils::Bracket<float>;
+  using BracketIR = o2::utils::Bracket<o2::InteractionRecord>;
   using Params = o2::globaltracking::MatchITSTPCParams;
   using MatCorrType = o2::base::Propagator::MatCorrType;
 
- public:
   MatchTPCITS(); // std::unique_ptr to forward declared type needs constructor / destructor in .cxx
   ~MatchTPCITS();
 
@@ -314,6 +318,9 @@ class MatchTPCITS
   void destroyLastABTrackLinksList();
   void refitABTrack(int ibest) const;
 
+  void setCosmics(bool v) { mCosmics = v; }
+  bool isCosmics() const { return mCosmics; }
+
   ///< perform all initializations
   void init();
 
@@ -322,6 +329,9 @@ class MatchTPCITS
 
   ///< set InteractionRecods for the beginning of the TF
   void setStartIR(const o2::InteractionRecord& ir) { mStartIR = ir; }
+
+  ///< set Bunch filling and init helpers for validation by BCs
+  void setBunchFilling(const o2::BunchFilling& bf);
 
   ///< ITS readout mode
   void setITSTriggered(bool v) { mITSTriggered = v; }
@@ -392,19 +402,19 @@ class MatchTPCITS
   }
 
   ///< set input ITS track MC labels
-  void setITSTrkLabelsInp(const MCLabCont* lbl)
+  void setITSTrkLabelsInp(const MCLabSpan& lbl)
   {
     mITSTrkLabels = lbl;
   }
 
   ///< set input ITS clusters MC labels
-  void setITSClsLabelsInp(const MCLabCont* lbl)
+  void setITSClsLabelsInp(const MCLabContCl* lbl)
   {
     mITSClsLabels = lbl;
   }
 
   ///< set input TPC track MC labels
-  void setTPCTrkLabelsInp(const MCLabCont* lbl)
+  void setTPCTrkLabelsInp(const MCLabSpan& lbl)
   {
     mTPCTrkLabels = lbl;
   }
@@ -423,8 +433,8 @@ class MatchTPCITS
   void printCandidatesITS() const;
 
   std::vector<o2::dataformats::TrackTPCITS>& getMatchedTracks() { return mMatchedTracks; }
-  std::vector<o2::MCCompLabel>& getMatchedITSLabels() { return mOutITSLabels; }
-  std::vector<o2::MCCompLabel>& getMatchedTPCLabels() { return mOutTPCLabels; }
+  MCLabContTr& getMatchedITSLabels() { return mOutITSLabels; }
+  MCLabContTr& getMatchedTPCLabels() { return mOutTPCLabels; }
 
   //>>> ====================== options =============================>>>
   void setUseMatCorrFlag(MatCorrType f) { mUseMatCorrFlag = f; }
@@ -477,8 +487,7 @@ class MatchTPCITS
   bool prepareFITInfo();
 
   int preselectChipClusters(std::vector<int>& clVecOut, const ClusRange& clRange, const ITSChipClustersRefs& clRefs,
-                            float trackY, float trackZ, float tolerY, float tolerZ,
-                            const o2::MCCompLabel& lblTrc) const;
+                            float trackY, float trackZ, float tolerY, float tolerZ, const o2::MCCompLabel& lblTrc) const;
   void fillClustersForAfterBurner(ITSChipClustersRefs& refCont, int rofStart, int nROFs = 1);
   void cleanAfterBurnerClusRefCache(int currentIC, int& startIC);
   void flagUsedITSClusters(const o2::its::TrackITS& track, int rofOffset);
@@ -515,6 +524,9 @@ class MatchTPCITS
   ///< get number of matching records for ITS track
   int getNMatchRecordsITS(const TrackLocITS& tITS) const;
 
+  ///< convert TPC timebins bracket to IR bracket
+  BracketIR tpcTimeBin2IRBracket(const BracketF tbrange);
+
   ///< convert TPC time bin to ITS ROFrame units
   int tpcTimeBin2ITSROFrame(float tbin) const
   {
@@ -533,6 +545,18 @@ class MatchTPCITS
   float time2TPCTimeBin(float tms) const
   {
     return tms * mTPCTBinMUSInv;
+  }
+
+  ///< convert TPC time bin to microseconds
+  float tpcTimeBin2MUS(float tbn) const
+  {
+    return tbn * mTPCTBinMUS;
+  }
+
+  ///< convert TPC time bin to nanoseconds
+  float tpcTimeBin2NS(float tbn) const
+  {
+    return tbn * mTPCTBinNS;
   }
 
   ///< convert Interaction Record for TPC time bin units
@@ -571,6 +595,7 @@ class MatchTPCITS
 
   bool mInitDone = false; ///< flag init already done
   bool mFieldON = true;   ///< flag for field ON/OFF
+  bool mCosmics = false;  ///< flag cosmics mode
   bool mMCTruthON = false;        ///< flag availability of MC truth
 
   o2::InteractionRecord mStartIR{0, 0}; ///< IR corresponding to the start of the TF
@@ -598,6 +623,7 @@ class MatchTPCITS
   float mTPCVDrift0 = -1.;          ///< TPC nominal drift speed in cm/microseconds
   float mTPCVDrift0Inv = -1.;       ///< inverse TPC nominal drift speed in cm/microseconds
   float mTPCTBinMUS = 0.;           ///< TPC time bin duration in microseconds
+  float mTPCTBinNS = 0.;            ///< TPC time bin duration in ns
   float mTPCTBinMUSInv = 0.;        ///< inverse TPC time bin duration in microseconds
   float mITSROFrame2TPCBin = 0.;    ///< conversion coeff from ITS ROFrame units to TPC time-bin
   float mTPCBin2ITSROFrame = 0.;    ///< conversion coeff from TPC time-bin to ITS ROFrame units
@@ -612,6 +638,10 @@ class MatchTPCITS
   std::unique_ptr<TPCTransform> mTPCTransform;         ///< TPC cluster transformation
   std::unique_ptr<o2::gpu::GPUParam> mTPCClusterParam; ///< TPC clusters error param
 
+  o2::BunchFilling mBunchFilling;
+  std::array<int16_t, o2::constants::lhc::LHCMaxBunches> mClosestBunchAbove; // closest filled bunch from above
+  std::array<int16_t, o2::constants::lhc::LHCMaxBunches> mClosestBunchBelow; // closest filled bunch from below
+
   ///>>>------ these are input arrays which should not be modified by the matching code
   //           since this info is provided by external device
   gsl::span<const o2::tpc::TrackTPC> mTPCTracksArray;       ///< input TPC tracks span
@@ -625,9 +655,9 @@ class MatchTPCITS
 
   const o2::tpc::ClusterNativeAccess* mTPCClusterIdxStruct = nullptr;     ///< struct holding the TPC cluster indices
 
-  const MCLabCont* mITSTrkLabels = nullptr; ///< input ITS Track MC labels
-  const MCLabCont* mITSClsLabels = nullptr; ///< input ITS Cluster MC labels
-  const MCLabCont* mTPCTrkLabels = nullptr; ///< input TPC Track MC labels
+  const MCLabContCl* mITSClsLabels = nullptr; ///< input ITS Cluster MC labels
+  MCLabSpan mITSTrkLabels;                    ///< input ITS Track MC labels
+  MCLabSpan mTPCTrkLabels;                    ///< input TPC Track MC labels
   /// <<<-----
 
   std::vector<InteractionCandidate> mInteractions; ///< possible interaction times
@@ -642,8 +672,8 @@ class MatchTPCITS
   std::vector<BracketF> mITSROFTimes;       ///< min/max times of ITS ROFs in TPC time-bins
   std::vector<TrackLocTPC> mTPCWork;        ///< TPC track params prepared for matching
   std::vector<TrackLocITS> mITSWork;        ///< ITS track params prepared for matching
-  std::vector<o2::MCCompLabel> mTPCLblWork; ///< TPC track labels
-  std::vector<o2::MCCompLabel> mITSLblWork; ///< ITS track labels
+  MCLabContTr mTPCLblWork;                  ///< TPC track labels
+  MCLabContTr mITSLblWork;                  ///< ITS track labels
   std::vector<float> mWinnerChi2Refit;      ///< vector of refitChi2 for winners
 
   std::deque<ITSChipClustersRefs> mITSChipClustersRefs; ///< range of clusters for each chip in ITS (for AfterBurner)
@@ -676,8 +706,8 @@ class MatchTPCITS
 
   ///< outputs tracks container
   std::vector<o2::dataformats::TrackTPCITS> mMatchedTracks;
-  std::vector<o2::MCCompLabel> mOutITSLabels; ///< ITS label of matched track
-  std::vector<o2::MCCompLabel> mOutTPCLabels; ///< TPC label of matched track
+  MCLabContTr mOutITSLabels; ///< ITS label of matched track
+  MCLabContTr mOutTPCLabels; ///< TPC label of matched track
 
   o2::its::RecoGeomHelper mRGHelper; ///< helper for cluster and geometry access
   float mITSFiducialZCut = 9999.;    ///< eliminate TPC seeds outside of this range

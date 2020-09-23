@@ -39,7 +39,7 @@ Tracker::Tracker(o2::its::TrackerTraits* traits)
   /// Initialise standard configuration with 1 iteration
   mTrkParams.resize(1);
   mMemParams.resize(1);
-  assert(mTraits != nullptr);
+  assert(traits != nullptr);
   mTraits = traits;
   mPrimaryVertexContext = mTraits->getPrimaryVertexContext();
 }
@@ -285,7 +285,6 @@ void Tracker::findTracks(const ROframe& event)
     if (!fitSuccess)
       continue;
     CA_DEBUGGER(refitCounters[nClusters - 4]++);
-    temporaryTrack.setROFrame(mROFrame);
     tracks.emplace_back(temporaryTrack);
     CA_DEBUGGER(assert(nClusters == temporaryTrack.getNumberOfClusters()));
   }
@@ -567,7 +566,7 @@ void Tracker::computeTracksMClabels(const ROframe& event)
     if (isFakeTrack) {
       maxOccurrencesValue.setFakeFlag();
     }
-    mTrackLabels.addElement(mTrackLabels.getIndexedSize(), maxOccurrencesValue);
+    mTrackLabels.emplace_back(maxOccurrencesValue);
   }
 }
 
