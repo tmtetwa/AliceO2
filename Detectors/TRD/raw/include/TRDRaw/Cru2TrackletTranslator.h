@@ -70,7 +70,7 @@ class Cru2TrackletTranslator
   double mIntegratedBytes = 0.;
   double mIntegratedTime = 0.;
 
- protected:
+public:
   uint32_t processHBFs();
   bool buildCRUPayLoad();
   bool processHalfCRU();

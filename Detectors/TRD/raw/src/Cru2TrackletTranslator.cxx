@@ -63,14 +63,16 @@ uint32_t Cru2TrackletTranslator::processHBFs()
     mDataEndPointer = (const uint32_t*)((char*)rdh + offsetToNext);
     LOGF(debug, "mDataEndPointer is %p\n ", (void*)mDataEndPointer);
     while ((void*)mDataPointer < (void*)mDataEndPointer) { // loop to handle the case where a halfcru ends/begins mid rdh data block
-      mEventCounter++;
-      if (processHalfCRU()) { // at this point the entire payload is in mSaveBuffer, TODO parse this incrementally, less mem foot print.
-        LOG(warn) << "processHalfCRU return flase";
-        break; // end of CRU
+      while(headerSize > 3000){
+          mEventCounter++;
+          if (processHalfCRU()) { // at this point the entire payload is in mSaveBuffer, TODO parse this incrementally, less mem foot print.
+            LOG(warn) << "processHalfCRU return flase";
+            break; // end of CRU
+          }
+          mState = CRUStateHalfChamber;
+          //buildCRUPayLoad(); // the rest of the hbf for the subsequent cruhalfchamber payload.
+          // TODO is this even possible if hbfs upto the stop  is for one event and each cru header is for 1 event?
       }
-      mState = CRUStateHalfChamber;
-      //buildCRUPayLoad(); // the rest of the hbf for the subsequent cruhalfchamber payload.
-      // TODO is this even possible if hbfs upto the stop  is for one event and each cru header is for 1 event?
     }
     /* move to next RDH */
     rdh = (o2::header::RDHAny*)((char*)(rdh) + offsetToNext);
@@ -122,6 +124,7 @@ bool Cru2TrackletTranslator::processHalfCRU()
     memcpy(&mCurrentHalfCRUHeader, (void*)(mDataPointer), sizeof(mCurrentHalfCRUHeader));
     //mEncoderRDH = reinterpret_cast<o2::header::RDHAny*>(mEncoderPointer);)
     mCurrentLink = 0;
+    auto gling = o2::trd::getlinkdatasizes(mCurrentHalfCRUHeader, mCurrentHalfCRULinkLengths);
     o2::trd::getlinkdatasizes(mCurrentHalfCRUHeader, mCurrentHalfCRULinkLengths);
     o2::trd::getlinkerrorflags(mCurrentHalfCRUHeader, mCurrentHalfCRULinkErrorFlags);
     mTotalHalfCRUDataLength = std::accumulate(mCurrentHalfCRULinkLengths.begin(),
@@ -140,7 +143,7 @@ bool Cru2TrackletTranslator::processHalfCRU()
       LOGF(debug, "mTrackletHCHeader is at %p had value 0x%08x", (void*)mDataPointer, mDataPointer[0]);
       mTrackletHCHeader = (TrackletHCHeader*)mDataPointer;
       mDataPointer += 16; //sizeof(mTrackletHCHeader)/4;
-      mHCID = mTrackletHCHeader->HCID;
+    //  mHCID = mTrackletHCHeader->HCID;
       //     LOGF(info,"mDataPointer after advancing past TrackletHCHeader is at %p has value 0x%08x",(void*)mDataPointer,mDataPointer[0]);
       //if(debugparsing){
       //     printHalfChamber(*mTrackletHCHeader);
